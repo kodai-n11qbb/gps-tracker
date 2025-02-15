@@ -33,6 +33,7 @@ current_location = {
     "pin_status": {
         "tx": False,
         "rx": False,
+        "pps": False,  # PPSピンの状態を追加
         "raw_data": ""
     }
 }
@@ -129,6 +130,7 @@ def monitor_pins():
             # TX(GPIO14)とRX(GPIO15)の状態を読み取り
             tx_state = GPIO.input(14)
             rx_state = GPIO.input(15)
+            pps_state = GPIO.input(18)  # PPS
             
             # シリアルデータの直接読み取り（デバッグ用）
             try:
@@ -141,11 +143,13 @@ def monitor_pins():
             current_location["pin_status"].update({
                 "tx": bool(tx_state),
                 "rx": bool(rx_state),
+                "pps": bool(pps_state),
                 "raw_data": raw_hex
             })
             
             print(f"TX(GPIO14): {'HIGH' if tx_state else 'LOW'}")
             print(f"RX(GPIO15): {'HIGH' if rx_state else 'LOW'}")
+            print(f"PPS(GPIO18): {'HIGH' if pps_state else 'LOW'}")
             print(f"Raw data: {raw_hex}")
             
         except Exception as e:
@@ -205,6 +209,11 @@ def index():
             <span id="rx-status" class="pin-status pin-inactive"></span>
             <span id="rx-text">LOW</span>
           </p>
+          <p>
+            PPS (GPIO18): 
+            <span id="pps-status" class="pin-status pin-inactive"></span>
+            <span id="pps-text">LOW</span>
+          </p>
           <p>生データ:</p>
           <pre id="raw-data" class="raw-data">待機中...</pre>
         </div>
@@ -237,14 +246,18 @@ def index():
             // ピン状態の更新
             const txStatus = document.getElementById('tx-status');
             const rxStatus = document.getElementById('rx-status');
+            const ppsStatus = document.getElementById('pps-status');
             const txText = document.getElementById('tx-text');
             const rxText = document.getElementById('rx-text');
+            const ppsText = document.getElementById('pps-text');
             const rawData = document.getElementById('raw-data');
             
             txStatus.className = 'pin-status ' + (data.pin_status.tx ? 'pin-active' : 'pin-inactive');
             rxStatus.className = 'pin-status ' + (data.pin_status.rx ? 'pin-active' : 'pin-inactive');
+            ppsStatus.className = 'pin-status ' + (data.pin_status.pps ? 'pin-active' : 'pin-inactive');
             txText.textContent = data.pin_status.tx ? 'HIGH' : 'LOW';
             rxText.textContent = data.pin_status.rx ? 'HIGH' : 'LOW';
+            ppsText.textContent = data.pin_status.pps ? 'HIGH' : 'LOW';
             rawData.textContent = data.pin_status.raw_data;
           }
 
@@ -277,11 +290,20 @@ def index():
 
 @app.route("/location", methods=["GET"])
 def location():
+    GPIO.cleanup()
     return jsonify(current_location)
 
 # クリーンアップ処理の追加
 def cleanup():
     GPIO.cleanup()
+    print("GPIOをクリーンアップしました")
+
+if __name__ == "__main__":
+    try:
+        app.run(host="0.0.0.0", port=7777)
+    finally:
+        cleanup()
+
     print("GPIOをクリーンアップしました")
 
 if __name__ == "__main__":

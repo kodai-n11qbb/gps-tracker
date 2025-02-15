@@ -4,13 +4,14 @@ import threading
 import time
 import pynmea2
 import RPi.GPIO as GPIO  # 追加
+import serial.tools.list_ports  # 追加
 
 app = Flask(__name__)
 
 # グローバル変数を拡張
 current_location = {
-    "lat": 35.6895, 
-    "lon": 139.6917,
+    "lat": 40.7128,  # New York City latitude
+    "lon": -74.0060,  # New York City longitude
     "speed": 0,
     "course": 0,
     "timestamp": "",
@@ -26,57 +27,71 @@ def setup_gpio():
     GPIO.setup(15, GPIO.IN)   # RX
     print("GPIOの初期化が完了しました")
 
+def list_serial_ports():
+    ports = serial.tools.list_ports.comports()
+    print("利用可能なシリアルポート:")
+    for port in ports:
+        print(f"- {port.device}")
+
 def read_gps():
     global current_location
+    
     try:
-        setup_gpio()  # GPIO初期化
+        setup_gpio()  # GPIO初期化を再有効化
     except Exception as e:
         print(f"GPIOの初期化に失敗: {str(e)}")
-        return
-
+        print("GPIO初期化エラーを無視して続行します")
+    
     while True:
         try:
+            print("シリアルポートに接続を試みます...")
             ser = serial.Serial(
-                port='/dev/ttyS0',  # Raspberry Pi Zero 2 WのUARTポート
+                port='/dev/ttyAMA0',  # ttyS0からttyAMA0に変更
                 baudrate=9600,
                 timeout=1,
-                # UART設定の追加
                 parity=serial.PARITY_NONE,
                 stopbits=serial.STOPBITS_ONE,
                 bytesize=serial.EIGHTBITS
             )
-            print("GPSモジュールに接続しました")
+            
+            print("シリアルポートに接続成功")
             
             while True:
                 try:
-                    line = ser.readline().decode('utf-8')
-                    if line.startswith('$GPRMC'):
-                        msg = pynmea2.parse(line)
-                        if msg.latitude and msg.longitude:
-                            current_location.update({
-                                "lat": msg.latitude,
-                                "lon": msg.longitude,
-                                "speed": msg.spd_over_grnd if msg.spd_over_grnd else 0,
-                                "course": msg.true_course if msg.true_course else 0,
-                                "timestamp": msg.timestamp.strftime("%H:%M:%S")
-                            })
-                    elif line.startswith('$GPGGA'):
-                        msg = pynmea2.parse(line)
-                        current_location["satellites"] = msg.num_sats
+                    line = ser.readline()
+                    if line:
+                        print(f"受信データ: {line}")  # デバッグ用
+                        line = line.decode('utf-8').strip()
+                        if line.startswith('$GPRMC'):
+                            msg = pynmea2.parse(line)
+                            if msg.latitude and msg.longitude:
+                                current_location.update({
+                                    "lat": msg.latitude,
+                                    "lon": msg.longitude,
+                                    "speed": msg.spd_over_grnd if msg.spd_over_grnd else 0,
+                                    "course": msg.true_course if msg.true_course else 0,
+                                    "timestamp": msg.timestamp.strftime("%H:%M:%S")
+                                })
+                        elif line.startswith('$GPGGA'):
+                            msg = pynmea2.parse(line)
+                            current_location["satellites"] = msg.num_sats
                 except UnicodeDecodeError:
-                    print("データの読み取りエラー")
-                except pynmea2.ParseError:
-                    print("NMEAデータの解析エラー")
+                    print(f"デコードエラー: {line}")
                 except Exception as e:
-                    print(f"エラー発生: {str(e)}")
+                    print(f"データ処理エラー: {str(e)}")
                 time.sleep(0.1)
                 
-        except serial.SerialException:
-            print("GPSモジュールに接続できません。5秒後に再試行します...")
+        except serial.SerialException as e:
+            print(f"シリアル接続エラー: {str(e)}")
             time.sleep(5)
         except Exception as e:
             print(f"予期せぬエラー: {str(e)}")
             time.sleep(5)
+        finally:
+            try:
+                ser.close()
+            except:
+                pass
 
 # GPSデータ読み取りスレッドの開始
 gps_thread = threading.Thread(target=read_gps, daemon=True)

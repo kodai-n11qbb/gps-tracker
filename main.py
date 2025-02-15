@@ -6,6 +6,19 @@ import pynmea2
 import RPi.GPIO as GPIO  # 追加
 import serial.tools.list_ports  # 追加
 import subprocess
+import datetime
+
+# GPS モジュールのピン接続:
+# VCC  -> 3.3V
+# GND  -> GND
+# TXD  -> GPIO15 (RXD)
+# RXD  -> GPIO14 (TXD)
+# PPS  -> GPIO4  (1PPS入力用)
+
+# pynmea2ライブラリの主な機能:
+# - NMEA センテンスのパース（解析）
+# - GPS データの抽出 (緯度、経度、速度、方位、時刻など)
+# - 各種GPSセンテンス対応 ($GPRMC, $GPGGA, $GPGSV など)
 
 app = Flask(__name__)
 
@@ -29,9 +42,17 @@ def setup_gpio():
     GPIO.setmode(GPIO.BCM)
     GPIO.setwarnings(False)
     # UARTピンの設定
-    GPIO.setup(14, GPIO.OUT)  # TX
-    GPIO.setup(15, GPIO.IN)   # RX
+    GPIO.setup(14, GPIO.IN)   # RX
+    GPIO.setup(15, GPIO.OUT)  # TX
+    GPIO.setup(18, GPIO.IN)   # 1PPS入力
     print("GPIOの初期化が完了しました")
+
+def pps_callback(channel):
+    # 1PPS信号を受信したときの処理
+    # この時点で正確に秒が変わる
+    global current_location
+    now = datetime.datetime.now()
+    current_location["timestamp"] = now.strftime("%H:%M:%S")
 
 def list_serial_ports():
     ports = serial.tools.list_ports.comports()
@@ -44,6 +65,8 @@ def read_gps():
     
     try:
         setup_gpio()  # GPIO初期化を再有効化
+        # 1PPS割り込み設定
+        GPIO.add_event_detect(4, GPIO.RISING, callback=pps_callback)
     except Exception as e:
         print(f"GPIOの初期化に失敗: {str(e)}")
         print("GPIO初期化エラーを無視して続行します")

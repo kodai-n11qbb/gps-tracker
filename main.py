@@ -144,7 +144,8 @@ def index():
     <html>
       <head>
         <title>GPS Tracker</title>
-        <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_API_KEY"></script>
+        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
         <style>
           #map { height: 400px; width: 100%; margin-top: 20px; }
           .data-container { margin: 20px 0; }
@@ -199,14 +200,11 @@ def index():
           let marker;
           
           function initMap() {
-            map = new google.maps.Map(document.getElementById('map'), {
-              zoom: 15,
-              center: { lat: 35.6895, lng: 139.6917 }
-            });
-            marker = new google.maps.Marker({
-              position: { lat: 35.6895, lng: 139.6917 },
-              map: map
-            });
+            map = L.map('map').setView([35.6895, 139.6917], 15);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+              attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            }).addTo(map);
+            marker = L.marker([35.6895, 139.6917]).addTo(map);
           }
 
           async function updatePinStatus() {
@@ -239,9 +237,9 @@ def index():
             document.getElementById('satellites').innerText = data.satellites;
             
             // 地図の更新
-            const newPosition = { lat: Number(data.lat), lng: Number(data.lon) };
-            marker.setPosition(newPosition);
-            map.setCenter(newPosition);
+            const newPosition = [Number(data.lat), Number(data.lon)];
+            marker.setLatLng(newPosition);
+            map.setView(newPosition);
 
             await updatePinStatus();
           }

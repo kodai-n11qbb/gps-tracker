@@ -37,6 +37,11 @@ AE-GPS → Raspberry Pi Zero 2 W の接続：
 セットアップ手順\
 Raspberry PiのUARTを有効化:\
 `sudo raspi-config`\
+sudo raspi-config\
+\# Interfacing Options → Serial → \
+\# Would you like a login shell to \be accessible over serial? → No\
+\# Would you like the serial port hardware to be enabled? → Yes
+
 設定ファイルを編集:\
 `sudo nano /boot/config.txt
 enable_uart=1

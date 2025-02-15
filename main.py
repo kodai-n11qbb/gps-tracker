@@ -5,6 +5,7 @@ import time
 import pynmea2
 import RPi.GPIO as GPIO  # 追加
 import serial.tools.list_ports  # 追加
+import subprocess
 
 app = Flask(__name__)
 
@@ -15,7 +16,12 @@ current_location = {
     "speed": 0,
     "course": 0,
     "timestamp": "",
-    "satellites": 0
+    "satellites": 0,
+    "pin_status": {
+        "tx": False,
+        "rx": False,
+        "raw_data": ""
+    }
 }
 
 # GPIOとUARTの初期化
@@ -93,9 +99,43 @@ def read_gps():
             except:
                 pass
 
+def monitor_pins():
+    global current_location
+    while True:
+        try:
+            # TX(GPIO14)とRX(GPIO15)の状態を読み取り
+            tx_state = GPIO.input(14)
+            rx_state = GPIO.input(15)
+            
+            # シリアルデータの直接読み取り（デバッグ用）
+            try:
+                raw = subprocess.check_output(['xxd', '-l', '32', '/dev/ttyAMA0'], 
+                                           stderr=subprocess.PIPE)
+                raw_hex = raw.decode('utf-8')
+            except:
+                raw_hex = "データなし"
+
+            current_location["pin_status"].update({
+                "tx": bool(tx_state),
+                "rx": bool(rx_state),
+                "raw_data": raw_hex
+            })
+            
+            print(f"TX(GPIO14): {'HIGH' if tx_state else 'LOW'}")
+            print(f"RX(GPIO15): {'HIGH' if rx_state else 'LOW'}")
+            print(f"Raw data: {raw_hex}")
+            
+        except Exception as e:
+            print(f"ピンモニタリングエラー: {str(e)}")
+        time.sleep(0.1)
+
 # GPSデータ読み取りスレッドの開始
 gps_thread = threading.Thread(target=read_gps, daemon=True)
 gps_thread.start()
+
+# ピンモニタリングスレッドの開始
+monitor_thread = threading.Thread(target=monitor_pins, daemon=True)
+monitor_thread.start()
 
 @app.route("/")
 def index():
@@ -108,10 +148,43 @@ def index():
         <style>
           #map { height: 400px; width: 100%; margin-top: 20px; }
           .data-container { margin: 20px 0; }
+          .pin-status { 
+            display: inline-block; 
+            width: 20px; 
+            height: 20px; 
+            border-radius: 50%;
+            margin-right: 10px;
+          }
+          .pin-active { background-color: #00ff00; }
+          .pin-inactive { background-color: #ff0000; }
+          .raw-data { 
+            font-family: monospace; 
+            background: #f0f0f0; 
+            padding: 10px; 
+            margin: 10px 0;
+          }
         </style>
       </head>
       <body>
         <h1>GPS Tracker</h1>
+        
+        <!-- ピン状態の表示 -->
+        <div class="data-container">
+          <h2>GPIO ピン状態:</h2>
+          <p>
+            TX (GPIO14): 
+            <span id="tx-status" class="pin-status pin-inactive"></span>
+            <span id="tx-text">LOW</span>
+          </p>
+          <p>
+            RX (GPIO15): 
+            <span id="rx-status" class="pin-status pin-inactive"></span>
+            <span id="rx-text">LOW</span>
+          </p>
+          <p>生データ:</p>
+          <pre id="raw-data" class="raw-data">待機中...</pre>
+        </div>
+
         <div class="data-container">
           <p>緯度経度: <span id="location"></span></p>
           <p>速度: <span id="speed"></span> ノット</p>
@@ -136,6 +209,24 @@ def index():
             });
           }
 
+          async function updatePinStatus() {
+            const res = await fetch('/location');
+            const data = await res.json();
+            
+            // ピン状態の更新
+            const txStatus = document.getElementById('tx-status');
+            const rxStatus = document.getElementById('rx-status');
+            const txText = document.getElementById('tx-text');
+            const rxText = document.getElementById('rx-text');
+            const rawData = document.getElementById('raw-data');
+            
+            txStatus.className = 'pin-status ' + (data.pin_status.tx ? 'pin-active' : 'pin-inactive');
+            rxStatus.className = 'pin-status ' + (data.pin_status.rx ? 'pin-active' : 'pin-inactive');
+            txText.textContent = data.pin_status.tx ? 'HIGH' : 'LOW';
+            rxText.textContent = data.pin_status.rx ? 'HIGH' : 'LOW';
+            rawData.textContent = data.pin_status.raw_data;
+          }
+
           async function fetchLocation() {
             const res = await fetch('/location');
             const data = await res.json();
@@ -151,6 +242,8 @@ def index():
             const newPosition = { lat: Number(data.lat), lng: Number(data.lon) };
             marker.setPosition(newPosition);
             map.setCenter(newPosition);
+
+            await updatePinStatus();
           }
 
           initMap();

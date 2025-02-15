@@ -85,7 +85,7 @@ def read_gps():
                     print(f"デコードエラー: {line}")
                 except Exception as e:
                     print(f"データ処理エラー: {str(e)}")
-                time.sleep(0.1)
+                time.sleep(0.5)
                 
         except serial.SerialException as e:
             print(f"シリアル接続エラー: {str(e)}")
@@ -127,7 +127,7 @@ def monitor_pins():
             
         except Exception as e:
             print(f"ピンモニタリングエラー: {str(e)}")
-        time.sleep(0.1)
+        time.sleep(0.5)
 
 # GPSデータ読み取りスレッドの開始
 gps_thread = threading.Thread(target=read_gps, daemon=True)

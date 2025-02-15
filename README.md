@@ -36,7 +36,13 @@ AE-GPS → Raspberry Pi Zero 2 W の接続：
 
 セットアップ手順\
 Raspberry PiのUARTを有効化:\
+`sudo raspi-config`\
 設定ファイルを編集:\
+`sudo nano /boot/config.txt
+enable_uart=1
+dtoverlay=disable-bt`\
 再起動:\
+`sudo reboot`\
 シリアルポートの権限を設定:\
+`sudo usermod -a -G dialout $USER`\
 これで、AE-GPSモジュールからのデータを受信できるようになります。シリアルポートのパスが/dev/ttyS0になっていることを確認してください。

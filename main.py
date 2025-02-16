@@ -11,9 +11,9 @@ import datetime
 # GPS モジュールのピン接続:
 # VCC  -> 3.3V
 # GND  -> GND
-# TXD  -> GPIO15 (RXD)
-# RXD  -> GPIO14 (TXD)
-# PPS  -> GPIO4  (1PPS入力用)
+# TXD  -> GPIO15 (RPiのRXD)
+# RXD  -> GPIO14 (RPiのTXD)
+# PPS  -> GPIO18 (1PPS入力用)
 
 # pynmea2ライブラリの主な機能:
 # - NMEA センテンスのパース（解析）
@@ -33,6 +33,7 @@ current_location = {
     "pin_status": {
         "tx": False,
         "rx": False,
+        "pps": False,
         "raw_data": ""
     }
 }
@@ -42,9 +43,9 @@ def setup_gpio():
     GPIO.setmode(GPIO.BCM)
     GPIO.setwarnings(False)
     # UARTピンの設定
-    GPIO.setup(14, GPIO.IN)   # RX
-    GPIO.setup(15, GPIO.OUT)  # TX
-    GPIO.setup(18, GPIO.IN)   # 1PPS入力
+    GPIO.setup(14, GPIO.OUT)  # RPiのTX -> AE-GPSのRX
+    GPIO.setup(15, GPIO.IN)   # RPiのRX -> AE-GPSのTX
+    GPIO.setup(18, GPIO.IN, pull_up_down=GPIO.PUD_UP)  # 1PPS入力
     print("GPIOの初期化が完了しました")
 
 def pps_callback(channel):
@@ -66,7 +67,7 @@ def read_gps():
     try:
         setup_gpio()  # GPIO初期化を再有効化
         # 1PPS割り込み設定
-        GPIO.add_event_detect(4, GPIO.RISING, callback=pps_callback)
+        GPIO.add_event_detect(18, GPIO.RISING, callback=pps_callback)  # GPIO18に変更
     except Exception as e:
         print(f"GPIOの初期化に失敗: {str(e)}")
         print("GPIO初期化エラーを無視して続行します")
@@ -127,8 +128,9 @@ def monitor_pins():
     while True:
         try:
             # TX(GPIO14)とRX(GPIO15)の状態を読み取り
-            tx_state = GPIO.input(14)
-            rx_state = GPIO.input(15)
+            tx_state = GPIO.input(15)  # AE-GPSのTX -> RPiのRX (GPIO15)
+            rx_state = GPIO.input(14)  # AE-GPSのRX -> RPiのTX (GPIO14)
+            pps_state = GPIO.input(18) # 1PPS信号の状態も読み取り
             
             # シリアルデータの直接読み取り（デバッグ用）
             try:
@@ -141,11 +143,13 @@ def monitor_pins():
             current_location["pin_status"].update({
                 "tx": bool(tx_state),
                 "rx": bool(rx_state),
+                "pps": bool(pps_state),  # PPS状態も追加
                 "raw_data": raw_hex
             })
             
-            print(f"TX(GPIO14): {'HIGH' if tx_state else 'LOW'}")
-            print(f"RX(GPIO15): {'HIGH' if rx_state else 'LOW'}")
+            print(f"TX(GPIO15): {'HIGH' if tx_state else 'LOW'}")
+            print(f"RX(GPIO14): {'HIGH' if rx_state else 'LOW'}")
+            print(f"PPS(GPIO18): {'HIGH' if pps_state else 'LOW'}")
             print(f"Raw data: {raw_hex}")
             
         except Exception as e:

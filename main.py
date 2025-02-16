@@ -4,15 +4,16 @@ import serial
 import RPi.GPIO as GPIO
 from flask import Flask, jsonify, render_template_string
 
-# Global variable for storing raw data
+# Global variables for storing serial raw data and pin status
 raw_data = ""
+pin_status = {"GPIO14": None, "GPIO15": None, "GPIO18": None}
 
 # Initialize GPIO for AE-GPS connection (pins used per README)
 def setup_gpio():
     GPIO.setmode(GPIO.BCM)
     GPIO.setwarnings(False)
-    # AE-GPSのRX → RPiのTX: GPIO14 (入力 mode since UART is controlled by hardware)
-    # AE-GPSのTX → RPiのRX: GPIO15 (入力 mode)
+    # AE-GPSのRX → RPiのTX: GPIO14 (UART制御のため入力モード)
+    # AE-GPSのTX → RPiのRX: GPIO15 (UART制御のため入力モード)
     GPIO.setup(14, GPIO.IN)
     GPIO.setup(15, GPIO.IN)
     # 1PPS入力用: GPIO18
@@ -52,12 +53,26 @@ def read_raw_data():
             print(f"読み取りエラー: {e}")
             time.sleep(1)
 
+# Background thread: monitor pin states every 0.5秒 and update global variable
+def monitor_pins():
+    global pin_status
+    while True:
+        try:
+            pin_status = {
+                "GPIO14": GPIO.input(14),
+                "GPIO15": GPIO.input(15),
+                "GPIO18": GPIO.input(18)
+            }
+        except Exception as e:
+            print(f"ピン読み取りエラー: {e}")
+        time.sleep(0.5)
+
 # Flask application
 app = Flask(__name__)
 
-@app.route("/raw", methods=["GET"])
-def get_raw():
-    return jsonify({"raw": raw_data})
+@app.route("/status", methods=["GET"])
+def get_status():
+    return jsonify({"raw": raw_data, "pins": pin_status})
 
 @app.route("/")
 def index():
@@ -65,23 +80,37 @@ def index():
     <!DOCTYPE html>
     <html>
       <head>
-        <title>AE-GPS Raw Data</title>
+        <title>AE-GPS Real-Time Data</title>
       </head>
       <body>
-        <h1>AE-GPS 生データ</h1>
-        <div id="data">{{ raw }}</div>
+        <h1>AE-GPS 生データ＆ピン状態</h1>
+        <div>
+          <h2>生データ:</h2>
+          <pre id="raw">{{ raw }}</pre>
+        </div>
+        <div>
+          <h2>ピン状態:</h2>
+          <ul>
+            <li>GPIO14: <span id="pin14">{{ pins.GPIO14 }}</span></li>
+            <li>GPIO15: <span id="pin15">{{ pins.GPIO15 }}</span></li>
+            <li>GPIO18: <span id="pin18">{{ pins.GPIO18 }}</span></li>
+          </ul>
+        </div>
         <script>
-          async function fetchData() {
-            const res = await fetch('/raw');
+          async function fetchStatus() {
+            const res = await fetch('/status');
             const data = await res.json();
-            document.getElementById('data').innerText = data.raw;
+            document.getElementById('raw').innerText = data.raw;
+            document.getElementById('pin14').innerText = data.pins.GPIO14;
+            document.getElementById('pin15').innerText = data.pins.GPIO15;
+            document.getElementById('pin18').innerText = data.pins.GPIO18;
           }
-          setInterval(fetchData, 1000);
-          fetchData();
+          setInterval(fetchStatus, 500);
+          fetchStatus();
         </script>
       </body>
     </html>
-    """, raw=raw_data)
+    """, raw=raw_data, pins=pin_status)
 
 def cleanup():
     GPIO.cleanup()
@@ -89,9 +118,10 @@ def cleanup():
 
 if __name__ == "__main__":
     setup_gpio()
-    # Start background thread for raw data reading
-    thread = threading.Thread(target=read_raw_data, daemon=True)
-    thread.start()
+    thread_raw = threading.Thread(target=read_raw_data, daemon=True)
+    thread_raw.start()
+    thread_pins = threading.Thread(target=monitor_pins, daemon=True)
+    thread_pins.start()
     try:
         app.run(host="0.0.0.0", port=7777)
     finally:

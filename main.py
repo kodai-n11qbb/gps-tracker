@@ -2,18 +2,20 @@ import threading
 import time
 import serial
 import RPi.GPIO as GPIO
+import pynmea2
 from flask import Flask, jsonify, render_template_string
 
-# Global variables for storing serial raw data and pin status
+# Global variables for storing raw data, pin status, and GPS coordinates
 raw_data = ""
 pin_status = {"GPIO14": None, "GPIO15": None, "GPIO18": None}
+gps_data = {"lat": None, "lon": None}  # 解析結果の座標
 
 # Initialize GPIO for AE-GPS connection (pins used per README)
 def setup_gpio():
     GPIO.setmode(GPIO.BCM)
     GPIO.setwarnings(False)
-    # AE-GPSのRX → RPiのTX: GPIO14 (UART制御のため入力モード)
-    # AE-GPSのTX → RPiのRX: GPIO15 (UART制御のため入力モード)
+    # AE-GPSのRX → RPiのTX: GPIO14 (入力 mode)
+    # AE-GPSのTX → RPiのRX: GPIO15 (入力 mode)
     GPIO.setup(14, GPIO.IN)
     GPIO.setup(15, GPIO.IN)
     # 1PPS入力用: GPIO18
@@ -37,9 +39,9 @@ def connect_serial():
         print(f"シリアル接続エラー: {e}")
         return None
 
-# Background thread: continuously read raw data and update global variable
+# Background thread: continuously read raw data, parse NMEA and update global variables
 def read_raw_data():
-    global raw_data
+    global raw_data, gps_data
     ser = connect_serial()
     if not ser:
         return
@@ -47,7 +49,17 @@ def read_raw_data():
         try:
             line = ser.readline()
             if line:
-                raw_data = line.decode('utf-8', errors='replace').strip()
+                decoded_line = line.decode('utf-8', errors='replace').strip()
+                raw_data = decoded_line
+                # 例として$GPRMCを解析し、座標を取得
+                if decoded_line.startswith("$GPRMC"):
+                    try:
+                        msg = pynmea2.parse(decoded_line)
+                        if msg.latitude and msg.longitude:
+                            gps_data["lat"] = msg.latitude
+                            gps_data["lon"] = msg.longitude
+                    except Exception as parse_err:
+                        print(f"NMEA解析エラー: {parse_err}")
                 print(f"受信: {raw_data}")
         except Exception as e:
             print(f"読み取りエラー: {e}")
@@ -72,7 +84,11 @@ app = Flask(__name__)
 
 @app.route("/status", methods=["GET"])
 def get_status():
-    return jsonify({"raw": raw_data, "pins": pin_status})
+    return jsonify({
+        "raw": raw_data,
+        "pins": pin_status,
+        "gps": gps_data
+    })
 
 @app.route("/")
 def index():
@@ -80,13 +96,20 @@ def index():
     <!DOCTYPE html>
     <html>
       <head>
-        <title>AE-GPS Real-Time Data</title>
+        <title>AE-GPS Real-Time Coordinates</title>
       </head>
       <body>
-        <h1>AE-GPS 生データ＆ピン状態</h1>
+        <h1>AE-GPS 生データ＆座標情報</h1>
         <div>
           <h2>生データ:</h2>
           <pre id="raw">{{ raw }}</pre>
+        </div>
+        <div>
+          <h2>座標情報:</h2>
+          <ul>
+            <li>緯度 (lat): <span id="lat">{{ gps.lat }}</span></li>
+            <li>経度 (lon): <span id="lon">{{ gps.lon }}</span></li>
+          </ul>
         </div>
         <div>
           <h2>ピン状態:</h2>
@@ -101,6 +124,8 @@ def index():
             const res = await fetch('/status');
             const data = await res.json();
             document.getElementById('raw').innerText = data.raw;
+            document.getElementById('lat').innerText = data.gps.lat || '---';
+            document.getElementById('lon').innerText = data.gps.lon || '---';
             document.getElementById('pin14').innerText = data.pins.GPIO14;
             document.getElementById('pin15').innerText = data.pins.GPIO15;
             document.getElementById('pin18').innerText = data.pins.GPIO18;
@@ -110,7 +135,7 @@ def index():
         </script>
       </body>
     </html>
-    """, raw=raw_data, pins=pin_status)
+    """, raw=raw_data, pins=pin_status, gps=gps_data)
 
 def cleanup():
     GPIO.cleanup()

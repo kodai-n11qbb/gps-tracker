@@ -12,9 +12,8 @@ raspberrypi zero 2 W\
 raspberrypi OS legacy 32bit
 
 ## 使用方法
-`git clone https://github.com/kodai-n11qbb/gps-tracker`\
-または\
-[ここ](https://github.com/kodai-n11qbb/gps-tracker/archive/refs/heads/main.zip)からダウンロード
+`git clone https://github.com/kodai-n11qbb/gps-tracker.git`\
+でダウンロード
 
 
 ## AIによる注意

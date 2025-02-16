@@ -16,11 +16,6 @@ raspberrypi OS legacy 32bit
 または\
 [ここ](https://github.com/kodai-n11qbb/gps-tracker/archive/refs/heads/main.zip)からダウンロード
 
-ダウンロードしたディレクトリのターミナルにて\
-`source venv/bin/activate`\
-`python main.py`
-
-
 
 ## AIによる注意
 AE-GPSモジュールとRaspberry Pi Zero 2 Wの接続方法を説明します。
@@ -35,25 +30,11 @@ RXD (受信)\
 main.py\
 Raspberry Piのシリアルポートを使用するように変更します。
 
-## 物理的な接続
-以下の表の通りに接続してください：
+main.py+1-1\
+物理的な接続図\
+AE-GPS → Raspberry Pi Zero 2 W の接続：
 
-| GPSモジュール | Raspberry Pi Zero 2 W |
-|--------------|---------------------|
-| VCC          | 3.3V (Pin 1)       |
-| GND          | GND (Pin 6)        |
-| TX           | RX (GPIO15/Pin 10) |
-| RX           | TX (GPIO14/Pin 8)  |
-| 1PPS         | (GPIO18 /Pin 12)   |
-
-![Raspberry Pi ピン配置図](https://raw.githubusercontent.com/kodai-n11qbb/gps-tracker/main/docs/pinout.png)
-
-注意：
-- ピン番号を間違えないように注意してください
-- TX→RX、RX→TXのように交差させて接続することに注意
-- 必ず電源を切った状態で接続作業を行ってください
-
-## セットアップ手順
+セットアップ手順\
 Raspberry PiのUARTを有効化:\
 `sudo raspi-config`\
 sudo raspi-config\

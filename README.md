@@ -44,6 +44,7 @@ Raspberry Piのシリアルポートを使用するように変更します。
 | GND          | GND (Pin 6)        |
 | TX           | RX (GPIO15/Pin 10) |
 | RX           | TX (GPIO14/Pin 8)  |
+| 1PPS         | (GPIO18 /Pin 12)   |
 
 ![Raspberry Pi ピン配置図](https://raw.githubusercontent.com/kodai-n11qbb/gps-tracker/main/docs/pinout.png)
 

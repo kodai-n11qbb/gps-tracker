@@ -42,9 +42,9 @@ current_location = {
 def setup_gpio():
     GPIO.setmode(GPIO.BCM)
     GPIO.setwarnings(False)
-    # UARTピンの設定
-    GPIO.setup(14, GPIO.OUT)  # RPiのTX -> AE-GPSのRX
-    GPIO.setup(15, GPIO.IN)   # RPiのRX -> AE-GPSのTX
+    # UARTピンの設定を修正
+    GPIO.setup(14, GPIO.IN)   # RPiのTX (実際にはUARTが制御するので入力モードに)
+    GPIO.setup(15, GPIO.IN)   # RPiのRX (実際にはUARTが制御するので入力モードに)
     GPIO.setup(18, GPIO.IN, pull_up_down=GPIO.PUD_UP)  # 1PPS入力
     print("GPIOの初期化が完了しました")
 

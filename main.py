@@ -58,7 +58,7 @@ def read_raw_data():
                     raw_data = decoded_line
 
                 # $GPRMC または $GPGGA を解析
-                if decoded_line.startswith("$GPRMC"):
+                if (decoded_line.startswith("$GPRMC") or decoded_line.startswith("$GPGGA")):
                     try:
                         msg = pynmea2.parse(decoded_line)
                         if hasattr(msg, 'latitude') and hasattr(msg, 'longitude'):
@@ -66,16 +66,7 @@ def read_raw_data():
                                 gps_data["lat"] = msg.latitude
                                 gps_data["lon"] = msg.longitude
                     except Exception as parse_err:
-                        print(f"NMEA解析エラー (GPRMC): {parse_err}")
-                elif decoded_line.startswith("$GPGGA"):
-                    try:
-                        msg = pynmea2.parse(decoded_line)
-                        if hasattr(msg, 'latitude') and hasattr(msg, 'longitude'):
-                            with data_lock:
-                                gps_data["lat"] = msg.latitude
-                                gps_data["lon"] = msg.longitude
-                    except Exception as parse_err:
-                        print(f"NMEA解析エラー (GPGGA): {parse_err}")
+                        print(f"NMEA解析エラー: {parse_err}")
 
                 print(f"受信: {raw_data}")
         except Exception as e:
@@ -115,16 +106,15 @@ def index():
 <!DOCTYPE html>
 <html>
 <head>
-    
+    <meta charset="UTF-8">
     <title>GPS Status</title>
 </head>
 <body>
+    <h1>GPS Status</h1>
+    <p id="raw-data">Raw Data: {{ raw or '---' }}</p>
+    <p id="pins">Pins: {{ pins or '---' }}</p>
+    <p id="gps-data">GPS Data: Lat: {{ gps.lat or '---' }}, Lon: {{ gps.lon or '---' }}</p>
     
-        Raw Data: 
-        Pins: 
-        GPS Data: Lat: {{ gps.lat or '---' }}, Lon: {{ gps.lon or '---' }}
-    
-
     <script>
         setInterval(() => {
             fetch('/status')
@@ -134,7 +124,7 @@ def index():
                 document.getElementById('pins').innerText = 'Pins: ' + JSON.stringify(data.pins);
                 document.getElementById('gps-data').innerText = `GPS Data: Lat: ${data.gps.lat || '---'}, Lon: ${data.gps.lon || '---'}`;
             });
-        }, 500);  // 0.5秒間隔
+        }, 500);
     </script>
 </body>
 </html>

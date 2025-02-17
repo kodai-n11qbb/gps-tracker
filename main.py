@@ -57,14 +57,14 @@ def read_raw_data():
                 with data_lock:
                     raw_data = decoded_line
 
-                # $GPRMC または $GPGGA を解析
-                if (decoded_line.startswith("$GPRMC") or decoded_line.startswith("$GPGGA")):
+                # $GPRMC または $GPGGA を解析し、緯度・経度を float に変換
+                if decoded_line.startswith("$GPRMC") or decoded_line.startswith("$GPGGA"):
                     try:
                         msg = pynmea2.parse(decoded_line)
                         if hasattr(msg, 'latitude') and hasattr(msg, 'longitude'):
                             with data_lock:
-                                gps_data["lat"] = msg.latitude
-                                gps_data["lon"] = msg.longitude
+                                gps_data["lat"] = float(msg.latitude)
+                                gps_data["lon"] = float(msg.longitude)
                     except Exception as parse_err:
                         print(f"NMEA解析エラー: {parse_err}")
 
@@ -113,7 +113,10 @@ def index():
     <h1>GPS Status</h1>
     <p id="raw-data">Raw Data: {{ raw or '---' }}</p>
     <p id="pins">Pins: {{ pins or '---' }}</p>
-    <p id="gps-data">GPS Data: Lat: {{ gps.lat or '---' }}, Lon: {{ gps.lon or '---' }}</p>
+    <p id="gps-data">
+      GPS Data: Lat: {{ ('%.6f' % gps.lat) if gps.lat is not none else '---' }}, 
+      Lon: {{ ('%.6f' % gps.lon) if gps.lon is not none else '---' }}
+    </p>
     
     <script>
         setInterval(() => {
@@ -122,7 +125,8 @@ def index():
             .then(data => {
                 document.getElementById('raw-data').innerText = 'Raw Data: ' + data.raw;
                 document.getElementById('pins').innerText = 'Pins: ' + JSON.stringify(data.pins);
-                document.getElementById('gps-data').innerText = `GPS Data: Lat: ${data.gps.lat || '---'}, Lon: ${data.gps.lon || '---'}`;
+                document.getElementById('gps-data').innerText = 
+                  `GPS Data: Lat: ${data.gps.lat ? parseFloat(data.gps.lat).toFixed(6) : '---'}, Lon: ${data.gps.lon ? parseFloat(data.gps.lon).toFixed(6) : '---'}`;
             });
         }, 500);
     </script>

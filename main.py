@@ -128,5 +128,5 @@ if __name__ == "__main__":
     pin_monitor_thread.daemon = True
     raw_data_thread.start()
     pin_monitor_thread.start()
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    app.run(debug=False, host='0.0.0.0', port=5000)
 

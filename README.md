@@ -49,4 +49,7 @@ dtoverlay=disable-bt`\
 `sudo reboot`\
 シリアルポートの権限を設定:\
 `sudo usermod -a -G dialout $USER`\
-これで、AE-GPSモジュールからのデータを受信できるようになります。シリアルポートのパスが/dev/ttyS0になっていることを確認してください。
+
+`sudo minicom -b 9600 -o -D /dev/ttyAMA0`\
+でGPSデータ取得
+

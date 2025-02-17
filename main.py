@@ -72,3 +72,61 @@ def read_raw_data():
             print(f"読み取りエラー: {e}")
         time.sleep(1)
 
+# Flaskアプリケーション
+app = Flask(__name__)
+
+@app.route("/status", methods=["GET"])
+def get_status():
+    with data_lock:
+        return jsonify({
+            "raw": raw_data,
+            "pins": pin_status,
+            "gps": gps_data
+        })
+
+@app.route("/")
+def index():
+    return render_template_string("""
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>GPS Status</title>
+</head>
+<body>
+  <h1>GPS Status</h1>
+  <p id="raw-data">Raw Data: {{ raw or '---' }}</p>
+  <p id="pins">Pins: {{ pins or '---' }}</p>
+  <p id="gps-data">
+    GPS Data: Lat: {{ ('%.6f' % gps.lat) if gps.lat is not none else '---' }}, 
+    Lon: {{ ('%.6f' % gps.lon) if gps.lon is not none else '---' }}
+  </p>
+  
+  <script>
+    setInterval(() => {
+      fetch('/status')
+      .then(response => response.json())
+      .then(data => {
+        document.getElementById('raw-data').innerText = 'Raw Data: ' + data.raw;
+        document.getElementById('pins').innerText = 'Pins: ' + JSON.stringify(data.pins);
+        document.getElementById('gps-data').innerText =
+          `GPS Data: Lat: ${data.gps.lat ? parseFloat(data.gps.lat).toFixed(6) : '---'}, Lon: ${data.gps.lon ? parseFloat(data.gps.lon).toFixed(6) : '---'}`;
+      });
+    }, 500);
+  </script>
+</body>
+</html>
+""", raw=raw_data, pins=pin_status, gps=gps_data)
+
+if __name__ == "__main__":
+    setup_gpio()
+    # Start the thread for reading raw data
+    raw_data_thread = threading.Thread(target=read_raw_data)
+    # Start the thread for GPIO pin monitoring (if needed)
+    pin_monitor_thread = threading.Thread(target=lambda: None)  # ...existing get pin status code...
+    raw_data_thread.daemon = True
+    pin_monitor_thread.daemon = True
+    raw_data_thread.start()
+    pin_monitor_thread.start()
+    app.run(debug=True, host='0.0.0.0', port=5000)
+

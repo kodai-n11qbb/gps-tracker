@@ -27,6 +27,9 @@ GND (グラウンド)\
 TXD (送信)\
 RXD (受信)\
 main.py\
+### AE-GPSのRX → RPiのTX: GPIO14 (入力 mode)
+### AE-GPSのTX → RPiのRX: GPIO15 (入力 mode)
+### 1PPS入力用: GPIO18
 Raspberry Piのシリアルポートを使用するように変更します。
 
 main.py+1-1\

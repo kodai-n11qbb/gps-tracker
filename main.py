@@ -7,10 +7,11 @@ from flask import Flask, jsonify, render_template_string
 from threading import Lock
 import atexit
 
-# グローバル変数: 生データ, ピン状態, GPS座標
+# グローバル変数: 生データ, ピン状態, GPS座標, ループ制御フラグ
 raw_data = ""
 pin_status = {"GPIO14": None, "GPIO15": None, "GPIO18": None}
 gps_data = {"lat": None, "lon": None}
+running = True  # 追加: 終了制御用グローバルフラグ
 
 # 排他制御用Lock
 data_lock = Lock()
@@ -51,12 +52,12 @@ def connect_serial():
         return None
 
 def read_raw_data():
-    global raw_data, gps_data
+    global raw_data, gps_data, running  # running を追加
     ser = connect_serial()
     if not ser:
         return
     try:
-        while True:
+        while running:  # 修正: while True -> while running
             try:
                 line = ser.readline()
                 if line:
@@ -139,5 +140,11 @@ if __name__ == "__main__":
     pin_monitor_thread.daemon = True
     raw_data_thread.start()
     pin_monitor_thread.start()
-    app.run(debug=False, host='0.0.0.0', port=5000)
+    try:
+        app.run(debug=False, host='0.0.0.0', port=5000, use_reloader=False)  # 修正: use_reloader=False を追加
+    except KeyboardInterrupt:
+        print("KeyboardInterrupt を検知しました。終了処理を実行します。")
+    finally:
+        running = False
+        print("アプリケーションを終了します。")
 

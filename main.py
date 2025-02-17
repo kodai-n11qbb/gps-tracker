@@ -5,6 +5,7 @@ import RPi.GPIO as GPIO
 import pynmea2
 from flask import Flask, jsonify, render_template_string
 from threading import Lock
+import atexit
 
 # グローバル変数: 生データ, ピン状態, GPS座標
 raw_data = ""
@@ -25,6 +26,12 @@ def setup_gpio():
     # 1PPS入力用: GPIO18
     GPIO.setup(18, GPIO.IN, pull_up_down=GPIO.PUD_UP)
     print("GPIOの初期化完了")
+
+# Register GPIO cleanup for program exit
+def cleanup():
+    print("プログラム終了のためGPIOをクリーンアップします")
+    GPIO.cleanup()
+atexit.register(cleanup)
 
 # シリアルポート接続
 def connect_serial():
@@ -48,29 +55,33 @@ def read_raw_data():
     ser = connect_serial()
     if not ser:
         return
-    while True:
-        try:
-            line = ser.readline()
-            if line:
-                decoded_line = line.decode('utf-8', errors='replace').strip()
-                with data_lock:
-                    raw_data = decoded_line
+    try:
+        while True:
+            try:
+                line = ser.readline()
+                if line:
+                    decoded_line = line.decode('utf-8', errors='replace').strip()
+                    with data_lock:
+                        raw_data = decoded_line
 
-                # "$GPGLL" contains latitude and longitude
-                if decoded_line.startswith("$GPGLL"):
-                    try:
-                        msg = pynmea2.parse(decoded_line)
-                        with data_lock:
-                            gps_data["lat"] = float(msg.latitude)
-                            gps_data["lon"] = float(msg.longitude)
-                    except Exception as parse_err:
-                        print(f"NMEA解析エラー (GPGLL): {parse_err}")
-                # Other sentences ($GPGSA, $GPGSV, $GPVTG, $GPZDA) are received without lat/lon update
+                    # "$GPGLL" contains latitude and longitude
+                    if decoded_line.startswith("$GPGLL"):
+                        try:
+                            msg = pynmea2.parse(decoded_line)
+                            with data_lock:
+                                gps_data["lat"] = float(msg.latitude)
+                                gps_data["lon"] = float(msg.longitude)
+                        except Exception as parse_err:
+                            print(f"NMEA解析エラー (GPGLL): {parse_err}")
+                    # Other sentences ($GPGSA, $GPGSV, $GPVTG, $GPZDA) are received without lat/lon update
 
-                print(f"受信: {raw_data}")
-        except Exception as e:
-            print(f"読み取りエラー: {e}")
-        time.sleep(1)
+                    print(f"受信: {raw_data}")
+            except Exception as e:
+                print(f"読み取りエラー: {e}")
+            time.sleep(1)
+    finally:
+        ser.close()
+        print("シリアルポートをクローズしました")
 
 # Flaskアプリケーション
 app = Flask(__name__)

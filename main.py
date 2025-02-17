@@ -30,7 +30,7 @@ def setup_gpio():
 def connect_serial():
     try:
         ser = serial.Serial(
-            port='/dev/ttyS0',
+            port='/dev/ttyAMA0',  # Changed from /dev/ttyS0 based on minicom testing
             baudrate=9600,
             timeout=1,
             parity=serial.PARITY_NONE,

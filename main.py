@@ -102,14 +102,11 @@ def index():
           crossorigin=""/>
     <style>
       html, body { height: 100%; margin: 0; padding: 0; }
-<<<<<<< HEAD
-      #map { width: 100%; height: 100vh; }
-=======
+      #map { width: 100%; height: 50vh; }
       /* Revert the map container style to a default full-screen view */
       #map { width: 100%; height: 100%; }
       /* Optional: Remove additional data container styling if not needed */
       #data { display: none; }
->>>>>>> 7aaa076 (MAPスタイル改善)
     </style>
   </head>
   <body>

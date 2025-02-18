@@ -120,9 +120,7 @@ def index():
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GPS Tracker</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" 
-          integrity="sha256-oA/7RMGGbj6Zy6k9QMIKjJcKtcF2NtFfX0F1h1z4rZU=" 
-          crossorigin=""/>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
     <style>
       html, body { margin: 0; padding: 0; height: 100%; }
       /* 上部: 30%の高さ */
@@ -139,9 +137,7 @@ def index():
       <p>Raw Data: <span id="raw">---</span></p>
     </div>
     <div id="map"></div>
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" 
-            integrity="sha256-o9N1jz8bLVLxw6J52dBX4fvZ8d9M2F8sJeDg8C+7uPs=" 
-            crossorigin=""></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
     <script>
       // 東京駅の座標をデフォルト値とする
       var defaultLat = 35.681236, defaultLon = 139.767125;

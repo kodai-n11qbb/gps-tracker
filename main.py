@@ -156,7 +156,7 @@ def index():
       }
       
       function updateData() {
-          // Append a timestamp to avoid caching
+          // Append timestamp to avoid caching
           fetch('/status?ts=' + new Date().getTime())
           .then(response => response.json())
           .then(data => {
@@ -171,6 +171,7 @@ def index():
               document.getElementById('raw').innerText = getValidValue(data.raw, '---');
           });
       }
+      
       updateData();
       setInterval(updateData, 2000);
     </script>

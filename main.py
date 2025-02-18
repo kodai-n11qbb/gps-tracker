@@ -128,10 +128,6 @@ def index():
           fetch('/status')
           .then(resp => resp.json())
           .then(data => {
-<<<<<<< HEAD
-=======
-              console.log("Fetched status data:", data);
->>>>>>> 7aaa076 (MAPスタイル改善)
               var lat = data.lat || defaultLat;
               var lon = data.lon || defaultLon;
               marker.setLatLng([lat, lon]);

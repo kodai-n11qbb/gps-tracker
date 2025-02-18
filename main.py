@@ -102,7 +102,14 @@ def index():
           crossorigin=""/>
     <style>
       html, body { height: 100%; margin: 0; padding: 0; }
+<<<<<<< HEAD
       #map { width: 100%; height: 100vh; }
+=======
+      /* Revert the map container style to a default full-screen view */
+      #map { width: 100%; height: 100%; }
+      /* Optional: Remove additional data container styling if not needed */
+      #data { display: none; }
+>>>>>>> 7aaa076 (MAPスタイル改善)
     </style>
   </head>
   <body>
@@ -124,6 +131,10 @@ def index():
           fetch('/status')
           .then(resp => resp.json())
           .then(data => {
+<<<<<<< HEAD
+=======
+              console.log("Fetched status data:", data);
+>>>>>>> 7aaa076 (MAPスタイル改善)
               var lat = data.lat || defaultLat;
               var lon = data.lon || defaultLon;
               marker.setLatLng([lat, lon]);

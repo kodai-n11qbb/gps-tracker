@@ -65,15 +65,21 @@ def read_raw_data():
                         if decoded_line.startswith("$GPGGA"):
                             try:
                                 msg = pynmea2.parse(decoded_line)
-                                new_gps = {
-                                    "time": str(msg.timestamp),
-                                    "lat": float(msg.latitude) if msg.latitude else None,
-                                    "lon": float(msg.longitude) if msg.longitude else None
-                                }
+                                # 有効な fix がある場合のみ更新する（緯度・経度が空でない場合）
+                                if msg.lat and msg.lon and float(msg.latitude) != 0 and float(msg.longitude) != 0:
+                                    new_gps = {
+                                        "time": str(msg.timestamp),
+                                        "lat": float(msg.latitude),
+                                        "lon": float(msg.longitude)
+                                    }
+                                else:
+                                    print("Fixが取得できていないか、無効な値です。")
                             except Exception as parse_err:
                                 print(f"NMEA解析エラー (GPGGA): {parse_err}")
                         with data_lock:
+                            # raw_data は常に更新
                             raw_data = decoded_line
+                            # 有効なGPSデータがあれば更新、無効な場合はそのままとする
                             if new_gps:
                                 gps_data.update(new_gps)
                         print(f"受信: {decoded_line}")

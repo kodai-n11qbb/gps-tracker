@@ -184,3 +184,12 @@ if __name__ == "__main__":
     setup_gpio()
     # Start the thread for reading raw data
     raw_data_thread = threading.Thread(target=read_raw_data)
+    raw_data_thread.daemon = True
+    raw_data_thread.start()
+    try:
+        app.run(debug=False, host='0.0.0.0', port=7777, use_reloader=False)
+    except KeyboardInterrupt:
+        print("KeyboardInterrupt を検知しました。終了処理を実行します。")
+    finally:
+        running = False
+        print("アプリケーションを終了します。")

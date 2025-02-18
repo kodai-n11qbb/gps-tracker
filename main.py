@@ -141,20 +141,26 @@ def index():
       }).addTo(map);
       var marker = L.marker([defaultLat, defaultLon]).addTo(map);
       
+      // Helper function to validate values:
+      function getValidValue(val, fallback) {
+          if (val === null || val === undefined || val === "None") return fallback;
+          return val;
+      }
+      
       function updateData() {
           // Append a timestamp to avoid caching
           fetch('/status?ts=' + new Date().getTime())
           .then(response => response.json())
           .then(data => {
               console.log("Fetched status data:", data);
-              var lat = data.lat || defaultLat;
-              var lon = data.lon || defaultLon;
+              var lat = getValidValue(data.lat, defaultLat);
+              var lon = getValidValue(data.lon, defaultLon);
               marker.setLatLng([lat, lon]);
               map.setView([lat, lon]);
-              document.getElementById('time').innerText = data.time || '---';
-              document.getElementById('lat').innerText = data.lat ? parseFloat(data.lat).toFixed(6) : '---';
-              document.getElementById('lon').innerText = data.lon ? parseFloat(data.lon).toFixed(6) : '---';
-              document.getElementById('raw').innerText = data.raw || '---';
+              document.getElementById('time').innerText = getValidValue(data.time, '---');
+              document.getElementById('lat').innerText = (lat !== defaultLat) ? parseFloat(lat).toFixed(6) : '---';
+              document.getElementById('lon').innerText = (lon !== defaultLon) ? parseFloat(lon).toFixed(6) : '---';
+              document.getElementById('raw').innerText = getValidValue(data.raw, '---');
           });
       }
       updateData();

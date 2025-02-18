@@ -9,7 +9,7 @@ raspberrypiと同じwifi内に接続し、localhost:7777 に接続すると現�
 ## 使用機器・環境
 AE-GPS\
 raspberrypi zero 2 W\
-raspberrypi OS legacy 32bit
+raspberrypi OS legacy 32bit lite
 
 ## 使用方法
 `git clone https://github.com/kodai-n11qbb/gps-tracker.git`\

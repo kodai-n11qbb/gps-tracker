@@ -110,6 +110,7 @@ def index():
           crossorigin=""/>
     <style>
       html, body { margin: 0; padding: 0; height: 100%; }
+      /* Top info area: 30% of the viewport height */
       #info { padding: 10px; height: 30vh; background: #f0f0f0; }
       /* Map area takes remaining 70% */
       #map { width: 100%; height: 70vh; }
@@ -127,28 +128,28 @@ def index():
             integrity="sha256-o9N1jz8bLVLxw6J52dBX4fvZ8d9M2F8sJeDg8C+7uPs=" 
             crossorigin=""></script>
     <script>
-      // Default coordinates set to Tokyo Station
+      // Default coordinates set to Tokyo Station.
       var defaultLat = 35.681236, defaultLon = 139.767125;
       var map = L.map('map').setView([defaultLat, defaultLon], 15);
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 19,
-        attribution: '© OpenStreetMap'
+          maxZoom: 19,
+          attribution: '© OpenStreetMap'
       }).addTo(map);
       var marker = L.marker([defaultLat, defaultLon]).addTo(map);
-
+      
       function updateData() {
-        fetch('/status')
-        .then(response => response.json())
-        .then(data => {
-            var lat = data.lat || defaultLat;
-            var lon = data.lon || defaultLon;
-            marker.setLatLng([lat, lon]);
-            map.setView([lat, lon]);
-            document.getElementById('time').innerText = data.time || '---';
-            document.getElementById('lat').innerText = data.lat ? parseFloat(data.lat).toFixed(6) : '---';
-            document.getElementById('lon').innerText = data.lon ? parseFloat(data.lon).toFixed(6) : '---';
-            document.getElementById('raw').innerText = data.raw || '---';
-        });
+          fetch('/status')
+          .then(response => response.json())
+          .then(data => {
+              var lat = data.lat || defaultLat;
+              var lon = data.lon || defaultLon;
+              marker.setLatLng([lat, lon]);
+              map.setView([lat, lon]);
+              document.getElementById('time').innerText = data.time || '---';
+              document.getElementById('lat').innerText = data.lat ? parseFloat(data.lat).toFixed(6) : '---';
+              document.getElementById('lon').innerText = data.lon ? parseFloat(data.lon).toFixed(6) : '---';
+              document.getElementById('raw').innerText = data.raw || '---';
+          });
       }
       updateData();
       setInterval(updateData, 2000);
@@ -157,21 +158,25 @@ def index():
 </html>
 """)
 
+@app.route("/display")
+def display():
+    with data_lock:
+        lat = gps_data.get("lat")
+        lon = gps_data.get("lon")
+    return render_template_string("""
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <title>GPS Display</title>
+  </head>
+  <body>
+    <h1>GPS Data</h1>
+    <p>Latitude: {{ lat if lat is not none else '---' }}</p>
+    <p>Longitude: {{ lon if lon is not none else '---' }}</p>
+  </body>
+</html>""", lat=lat, lon=lon)
+
 if __name__ == "__main__":
     setup_gpio()
     # Start the thread for reading raw data
     raw_data_thread = threading.Thread(target=read_raw_data)
-    # Start the thread for GPIO pin monitoring (if needed)
-    pin_monitor_thread = threading.Thread(target=lambda: None)  # ...existing get pin status code...
-    raw_data_thread.daemon = True
-    pin_monitor_thread.daemon = True
-    raw_data_thread.start()
-    pin_monitor_thread.start()
-    try:
-        app.run(debug=False, host='0.0.0.0', port=7777, use_reloader=False)  # 修正: use_reloader=False を追加
-    except KeyboardInterrupt:
-        print("KeyboardInterrupt を検知しました。終了処理を実行します。")
-    finally:
-        running = False
-        print("アプリケーションを終了します。")
-

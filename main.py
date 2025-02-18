@@ -93,11 +93,19 @@ def read_raw_data():
 # Flaskアプリケーション
 app = Flask(__name__)
 
-# Update /status to also include raw_data
+DEFAULT_LAT = 35.681236
+DEFAULT_LON = 139.767125
+
 @app.route("/status", methods=["GET"])
 def get_status():
     with data_lock:
-        return jsonify({**gps_data, "raw": raw_data})
+        data = {
+            "time": gps_data["time"] if gps_data["time"] is not None else "",
+            "lat": gps_data["lat"] if gps_data["lat"] is not None else DEFAULT_LAT,
+            "lon": gps_data["lon"] if gps_data["lon"] is not None else DEFAULT_LON,
+            "raw": raw_data if raw_data != "" else ""
+        }
+    return jsonify(data)
 
 # Update index route: top section shows text data; bottom section shows the map.
 @app.route("/")

@@ -131,7 +131,7 @@ def index():
 """, raw=raw_data, pins=pin_status, gps=gps_data)
 
 if __name__ == "__main__":
-    # setup_gpio()
+    setup_gpio()
     # Start the thread for reading raw data
     raw_data_thread = threading.Thread(target=read_raw_data)
     # Start the thread for GPIO pin monitoring (if needed)

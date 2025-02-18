@@ -11,7 +11,7 @@ import atexit
 raw_data = ""
 pin_status = {"GPIO14": None, "GPIO15": None, "GPIO18": None}
 gps_data = {"time": None, "lat": None, "lon": None}
-running = True  # 追加: 終了制御用グローバルフラグ
+running = True  # 終了制御用グローバルフラグ
 
 # 排他制御用Lock
 data_lock = Lock()
@@ -20,10 +20,6 @@ data_lock = Lock()
 def setup_gpio():
     GPIO.setmode(GPIO.BCM)
     GPIO.setwarnings(False)
-    # AE-GPSのRX → RPiのTX: GPIO14 (入力 mode)
-    # AE-GPSのTX → RPiのRX: GPIO15 (入力 mode)
-    # GPIO.setup(14, GPIO.IN)
-    # GPIO.setup(15, GPIO.IN)
     # 1PPS入力用: GPIO18
     GPIO.setup(18, GPIO.IN, pull_up_down=GPIO.PUD_UP)
     print("GPIOの初期化完了")
@@ -87,7 +83,6 @@ def read_raw_data():
         finally:
             ser.close()
             print("シリアルポートをクローズしました")
-        # If connection was lost, wait a bit before retrying.
         time.sleep(5)
 
 # Flaskアプリケーション
@@ -109,7 +104,7 @@ def get_status():
     response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
     return response
 
-# Update index route: top section shows text data; bottom section shows the map.
+# Update index route: 上部にテキスト情報、下部に地図を表示
 @app.route("/")
 def index():
     return render_template_string("""
@@ -124,9 +119,9 @@ def index():
           crossorigin=""/>
     <style>
       html, body { margin: 0; padding: 0; height: 100%; }
-      /* Top info area: 30% of the viewport height */
+      /* 上部: 30%の高さ */
       #info { padding: 10px; height: 30vh; background: #f0f0f0; }
-      /* Map area takes remaining 70% */
+      /* 下部: 70%の高さ */
       #map { width: 100%; height: 70vh; }
     </style>
   </head>
@@ -142,7 +137,7 @@ def index():
             integrity="sha256-o9N1jz8bLVLxw6J52dBX4fvZ8d9M2F8sJeDg8C+7uPs=" 
             crossorigin=""></script>
     <script>
-      // Default coordinates set to Tokyo Station.
+      // 東京駅の座標をデフォルト値とする
       var defaultLat = 35.681236, defaultLon = 139.767125;
       var map = L.map('map').setView([defaultLat, defaultLon], 15);
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -151,26 +146,19 @@ def index():
       }).addTo(map);
       var marker = L.marker([defaultLat, defaultLon]).addTo(map);
       
-      // Helper function to validate values:
-      function getValidValue(val, fallback) {
-          if (val === null || val === undefined || val === "None") return fallback;
-          return val;
-      }
-      
       function updateData() {
-          // Append timestamp to avoid caching
           fetch('/status?ts=' + new Date().getTime())
           .then(response => response.json())
           .then(data => {
               console.log("Fetched status data:", data);
-              var lat = getValidValue(data.lat, defaultLat);
-              var lon = getValidValue(data.lon, defaultLon);
+              var lat = data.lat;
+              var lon = data.lon;
               marker.setLatLng([lat, lon]);
               map.setView([lat, lon]);
-              document.getElementById('time').innerText = getValidValue(data.time, '---');
-              document.getElementById('lat').innerText = (lat !== defaultLat) ? parseFloat(lat).toFixed(6) : '---';
-              document.getElementById('lon').innerText = (lon !== defaultLon) ? parseFloat(lon).toFixed(6) : '---';
-              document.getElementById('raw').innerText = getValidValue(data.raw, '---');
+              document.getElementById('time').innerText = data.time || '---';
+              document.getElementById('lat').innerText = data.lat ? parseFloat(data.lat).toFixed(6) : '---';
+              document.getElementById('lon').innerText = data.lon ? parseFloat(data.lon).toFixed(6) : '---';
+              document.getElementById('raw').innerText = data.raw || '---';
           });
       }
       
@@ -201,7 +189,7 @@ def display():
 
 if __name__ == "__main__":
     setup_gpio()
-    # Start the thread for reading raw data
+    # raw_data 読み込みスレッドを開始
     raw_data_thread = threading.Thread(target=read_raw_data)
     raw_data_thread.daemon = True
     raw_data_thread.start()

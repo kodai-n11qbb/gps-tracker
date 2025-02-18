@@ -3,7 +3,7 @@ import time
 import serial
 import RPi.GPIO as GPIO
 import pynmea2
-from flask import Flask, jsonify, render_template_string
+from flask import Flask, jsonify, render_template_string, make_response
 from threading import Lock
 import atexit
 
@@ -105,7 +105,9 @@ def get_status():
             "lon": gps_data["lon"] if gps_data["lon"] is not None else DEFAULT_LON,
             "raw": raw_data if raw_data != "" else ""
         }
-    return jsonify(data)
+    response = make_response(jsonify(data))
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    return response
 
 # Update index route: top section shows text data; bottom section shows the map.
 @app.route("/")

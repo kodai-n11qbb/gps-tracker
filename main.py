@@ -90,34 +90,52 @@ def get_status():
 
 @app.route("/")
 def index():
-    with data_lock:
-        gps = gps_data.copy()
     return render_template_string("""
 <!DOCTYPE html>
 <html>
-<head>
-  <meta charset="UTF-8">
-  <title>GPS Data</title>
-</head>
-<body>
-  <h1>GPS Data</h1>
-  <p>Time: {{ gps.time or '---' }}</p>
-  <p>Latitude: {{ ('%.6f' % gps.lat) if gps.lat is not none else '---' }}</p>
-  <p>Longitude: {{ ('%.6f' % gps.lon) if gps.lon is not none else '---' }}</p>
-  <script>
-    setInterval(() => {
-      fetch('/status')
-      .then(response => response.json())
-      .then(data => {
-        document.querySelector('p:nth-of-type(1)').innerText = 'Time: ' + (data.time || '---');
-        document.querySelector('p:nth-of-type(2)').innerText = 'Latitude: ' + (data.lat ? parseFloat(data.lat).toFixed(6) : '---');
-        document.querySelector('p:nth-of-type(3)').innerText = 'Longitude: ' + (data.lon ? parseFloat(data.lon).toFixed(6) : '---');
-      });
-    }, 500);
-  </script>
-</body>
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GPS Tracker</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" 
+          integrity="sha256-oA/7RMGGbj6Zy6k9QMIKjJcKtcF2NtFfX0F1h1z4rZU=" 
+          crossorigin=""/>
+    <style>
+      html, body { height: 100%; margin: 0; padding: 0; }
+      #map { width: 100%; height: 100vh; }
+    </style>
+  </head>
+  <body>
+    <div id="map"></div>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" 
+            integrity="sha256-o9N1jz8bLVLxw6J52dBX4fvZ8d9M2F8sJeDg8C+7uPs=" 
+            crossorigin=""></script>
+    <script>
+      // Initialize map centered at Tokyo Station
+      var defaultLat = 35.681236, defaultLon = 139.767125;
+      var map = L.map('map').setView([defaultLat, defaultLon], 15);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          maxZoom: 19,
+          attribution: '© OpenStreetMap'
+      }).addTo(map);
+      var marker = L.marker([defaultLat, defaultLon]).addTo(map);
+      
+      function updateLocation() {
+          fetch('/status')
+          .then(resp => resp.json())
+          .then(data => {
+              var lat = data.lat || defaultLat;
+              var lon = data.lon || defaultLon;
+              marker.setLatLng([lat, lon]);
+              map.setView([lat, lon]);
+          });
+      }
+      updateLocation();
+      setInterval(updateLocation, 2000);
+    </script>
+  </body>
 </html>
-""", gps=gps)
+""")
 
 if __name__ == "__main__":
     setup_gpio()

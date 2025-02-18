@@ -142,9 +142,11 @@ def index():
       var marker = L.marker([defaultLat, defaultLon]).addTo(map);
       
       function updateData() {
-          fetch('/status')
+          // Append a timestamp to avoid caching
+          fetch('/status?ts=' + new Date().getTime())
           .then(response => response.json())
           .then(data => {
+              console.log("Fetched status data:", data);
               var lat = data.lat || defaultLat;
               var lon = data.lon || defaultLon;
               marker.setLatLng([lat, lon]);

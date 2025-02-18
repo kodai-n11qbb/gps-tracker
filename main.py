@@ -22,8 +22,8 @@ def setup_gpio():
     GPIO.setwarnings(False)
     # AE-GPSのRX → RPiのTX: GPIO14 (入力 mode)
     # AE-GPSのTX → RPiのRX: GPIO15 (入力 mode)
-    GPIO.setup(14, GPIO.IN)
-    GPIO.setup(15, GPIO.IN)
+    # GPIO.setup(14, GPIO.IN)
+    # GPIO.setup(15, GPIO.IN)
     # 1PPS入力用: GPIO18
     GPIO.setup(18, GPIO.IN, pull_up_down=GPIO.PUD_UP)
     print("GPIOの初期化完了")

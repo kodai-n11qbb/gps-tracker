@@ -10,7 +10,7 @@ import atexit
 # グローバル変数: 生データ, ピン状態, GPS座標, ループ制御フラグ
 raw_data = ""
 pin_status = {"GPIO14": None, "GPIO15": None, "GPIO18": None}
-gps_data = {"lat": None, "lon": None}
+gps_data = {"time": None, "lat": None, "lon": None}
 running = True  # 追加: 終了制御用グローバルフラグ
 
 # 排他制御用Lock
@@ -52,31 +52,27 @@ def connect_serial():
         return None
 
 def read_raw_data():
-    global raw_data, gps_data, running  # running を追加
+    global gps_data, running  # raw_data not used anymore for stable data
     ser = connect_serial()
     if not ser:
         return
     try:
-        while running:  # 修正: while True -> while running
+        while running:
             try:
                 line = ser.readline()
                 if line:
                     decoded_line = line.decode('utf-8', errors='replace').strip()
-                    with data_lock:
-                        raw_data = decoded_line
-
-                    # "$GPGLL" contains latitude and longitude
-                    if decoded_line.startswith("$GPGLL"):
+                    # Parse $GPGGA for time, latitude, longitude
+                    if decoded_line.startswith("$GPGGA"):
                         try:
                             msg = pynmea2.parse(decoded_line)
                             with data_lock:
-                                gps_data["lat"] = float(msg.latitude)
-                                gps_data["lon"] = float(msg.longitude)
+                                gps_data["time"] = str(msg.timestamp)
+                                gps_data["lat"] = float(msg.latitude) if msg.latitude else None
+                                gps_data["lon"] = float(msg.longitude) if msg.longitude else None
                         except Exception as parse_err:
-                            print(f"NMEA解析エラー (GPGLL): {parse_err}")
-                    # Other sentences ($GPGSA, $GPGSV, $GPVTG, $GPZDA) are received without lat/lon update
-
-                    print(f"受信: {raw_data}")
+                            print(f"NMEA解析エラー (GPGGA): {parse_err}")
+                    print(f"受信: {decoded_line}")
             except Exception as e:
                 print(f"読み取りエラー: {e}")
             time.sleep(1)
@@ -90,45 +86,38 @@ app = Flask(__name__)
 @app.route("/status", methods=["GET"])
 def get_status():
     with data_lock:
-        return jsonify({
-            "raw": raw_data,
-            "pins": pin_status,
-            "gps": gps_data
-        })
+        return jsonify(gps_data)
 
 @app.route("/")
 def index():
+    with data_lock:
+        gps = gps_data.copy()
     return render_template_string("""
 <!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>GPS Status</title>
+  <title>GPS Data</title>
 </head>
 <body>
-  <h1>GPS Status</h1>
-  <p id="raw-data">Raw Data: {{ raw or '---' }}</p>
-  <p id="pins">Pins: {{ pins or '---' }}</p>
-  <p id="gps-data">
-    GPS Data: Lat: {{ ('%.6f' % gps.lat) if gps.lat is not none else '---' }}, 
-    Lon: {{ ('%.6f' % gps.lon) if gps.lon is not none else '---' }}
-  </p>
-  
+  <h1>GPS Data</h1>
+  <p>Time: {{ gps.time or '---' }}</p>
+  <p>Latitude: {{ ('%.6f' % gps.lat) if gps.lat is not none else '---' }}</p>
+  <p>Longitude: {{ ('%.6f' % gps.lon) if gps.lon is not none else '---' }}</p>
   <script>
     setInterval(() => {
       fetch('/status')
       .then(response => response.json())
       .then(data => {
-        document.getElementById('raw-data').innerText = 'Raw Data: ' + data.raw;
-        document.getElementById('pins').innerText = 'Pins: ' + JSON.stringify(data.pins);
-        document.getElementById('gps-data').innerText =
-          `GPS Data: Lat: ${data.gps.lat ? parseFloat(data.gps.lat).toFixed(6) : '---'}, Lon: ${data.gps.lon ? parseFloat(data.gps.lon).toFixed(6) : '---'}`;
+        document.querySelector('p:nth-of-type(1)').innerText = 'Time: ' + (data.time || '---');
+        document.querySelector('p:nth-of-type(2)').innerText = 'Latitude: ' + (data.lat ? parseFloat(data.lat).toFixed(6) : '---');
+        document.querySelector('p:nth-of-type(3)').innerText = 'Longitude: ' + (data.lon ? parseFloat(data.lon).toFixed(6) : '---');
       });
     }, 500);
   </script>
 </body>
 </html>
-""", raw=raw_data, pins=pin_status, gps=gps_data)
+""", gps=gps)
 
 if __name__ == "__main__":
     setup_gpio()

@@ -52,7 +52,7 @@ def connect_serial():
         return None
 
 def read_raw_data():
-    global gps_data, raw_data, running  # add raw_data to globals
+    global gps_data, raw_data, running
     ser = connect_serial()
     if not ser:
         return
@@ -62,18 +62,22 @@ def read_raw_data():
                 line = ser.readline()
                 if line:
                     decoded_line = line.decode('utf-8', errors='replace').strip()
-                    with data_lock:
-                        raw_data = decoded_line  # update raw_data
-                    # Parse $GPGGA for time, latitude, longitude
+                    new_gps = {}
                     if decoded_line.startswith("$GPGGA"):
                         try:
                             msg = pynmea2.parse(decoded_line)
-                            with data_lock:
-                                gps_data["time"] = str(msg.timestamp)
-                                gps_data["lat"] = float(msg.latitude) if msg.latitude else None
-                                gps_data["lon"] = float(msg.longitude) if msg.longitude else None
+                            new_gps = {
+                                "time": str(msg.timestamp),
+                                "lat": float(msg.latitude) if msg.latitude else None,
+                                "lon": float(msg.longitude) if msg.longitude else None
+                            }
                         except Exception as parse_err:
                             print(f"NMEA解析エラー (GPGGA): {parse_err}")
+                    # Update both raw_data and gps_data quickly in one lock block
+                    with data_lock:
+                        raw_data = decoded_line
+                        if new_gps:
+                            gps_data.update(new_gps)
                     print(f"受信: {decoded_line}")
             except Exception as e:
                 print(f"読み取りエラー: {e}")
@@ -106,7 +110,6 @@ def index():
           crossorigin=""/>
     <style>
       html, body { margin: 0; padding: 0; height: 100%; }
-      /* Top info area: 30% of viewport height */
       #info { padding: 10px; height: 30vh; background: #f0f0f0; }
       /* Map area takes remaining 70% */
       #map { width: 100%; height: 70vh; }
